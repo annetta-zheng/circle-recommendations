@@ -50,23 +50,34 @@ The database is `circles.db` next to `schema.sql`; set `CIRCLES_DB=/some/path.db
 
 ## What it does
 
-Six steps per request — **candidates → hard filters → features → score → diversify → explain**:
+Seven steps per request — **candidates → hard filters → features → score → diversify → backfill → explain**:
 
 1. Candidates: every Circle she is not already in.
 2. Hard filters, every reason recorded: full, unlisted, dormant (no posts in 30 days *and* quiet for 90+ days), and — only when she asks with `exclude_coworkers=true` — any Circle with a coworker in it.
 3. Features: topic match (her stated interests; with none stated, topics of her Circles and, at a lower weight, topics her bio points to), activity (global percentile of log-volume blended with recency), social proof (members who share her interests; same-city members for Circles that meet in person), availability (open vs. request-to-join, size band), co-membership (people in her Circles who also belong to it, two or more needed, Adamic-Adar weighted so members who join everything count less).
-4. Score = 0.45·topic + 0.25·activity + 0.20·social + 0.05·availability + 0.05·co-membership; the weights sum to 1.0 and every feature is 0–1. Industry is backfill only: slots that went to Circles off her topics are refilled in score + 0.10·same-industry order, so it never moves a Circle on her topics. Company is a filter only, when she asks (step 2). All numbers live in [`app/config.py`](app/config.py); which ones are weights, which are feature values and which only reorder is laid out in [`docs/system-design.md`](docs/system-design.md#where-each-number-acts).
+4. Score = 0.45·topic + 0.25·activity + 0.20·social + 0.05·availability + 0.05·co-membership; the weights sum to 1.0 and every feature is 0–1. Company is not scored; it is only the step 2 filter, when she asks. All numbers live in [`app/config.py`](app/config.py); which ones are weights, which are feature values and which only reorder is laid out in [`docs/system-design.md`](docs/system-design.md#where-each-number-acts).
 5. Diversify: same-topic decay 0.7, then 0.5, so three near-identical Circles never fill the list. Leader signals and an exploration slot are built, tested and measured, and ship off: no version separates from another on this data ([version comparison](docs/system-design.md#version-comparison)).
-6. Explain: one template per reason type; a member never sees a factor name or a score.
+6. Backfill: the slots diversify gave to Circles off her topics are refilled in score + 0.10·same-industry order. It changes which fallbacks fill those slots, never whether a slot is a fallback, so a Circle on her topics never moves.
+7. Explain: one template per reason type; a member never sees a factor name or a score.
 
 Cold start is a ladder, reported in the response as `strategy`: `stated_interests` → `implicit_interests` (topics of Circles she already belongs to, plus topics her bio points to — read only when she stated nothing, so stated interests always lead) → `newcomer` (healthy, open, mid-size Circles, one per topic, plus a hint to add interests).
 
 Recency is measured against the dataset's anchor date (`AS_OF = 2026-09-21`), never the wall clock, so the same request returns the same answer next month.
 
 
-## Response shape
+## API Endpoints and Response shape
 
-`GET /users/{id}/recommendations?limit=5&debug=false&cursor=` — `limit` 1–20 (422 outside), 404 for an unknown member. `cursor` is the `next_cursor` of the previous page (400 if malformed or another member's); ranks continue across pages and the last page carries `null`. `location` overrides her profile city for the same-city signal, as `City, ST` or `lon,lat` snapped to the nearest of the ten member cities within 50 km; the response echoes the city used. `exclude_coworkers=true` drops every Circle with a coworker in it; the response echoes the flag, and the cursor does not carry it.
+0. Infra/Observability endpoints: 
+
+   `GET /health` (status, row counts, `as_of`)
+
+   `GET /users/{user_id}` (the member as the ranker sees her; a profile, so behind auth in production).
+
+1. Core Function endpoint: 
+
+   `GET /users/{user_id}/recommendations?limit={limit}&debug={false}&cursor={next_cursor}&location={city|lon,lat}&exclude_coworkers={false}` 
+
+   — `limit` 1–20 (422 outside), 404 for an unknown member. `cursor` is the `next_cursor` of the previous page (400 if malformed or another member's); ranks continue across pages and the last page carries `null`. `location` overrides her profile city for the same-city signal, as `City, ST` or `lon,lat` snapped to the nearest of the ten member cities within 50 km; the response echoes the city used. `exclude_coworkers=true` drops every Circle with a coworker in it; the response echoes the flag, and the cursor does not carry it.
 
 ```json
 {
@@ -89,7 +100,7 @@ Recency is measured against the dataset's anchor date (`AS_OF = 2026-09-21`), ne
 }
 ```
 
-`score_breakdown` and `excluded` appear only with `debug=true`. Other endpoints: `GET /health`, `GET /users/{id}` (the member as the ranker sees her).
+`score_breakdown` and `excluded` appear only with `debug=true`. Other endpoints: `GET /health`, `GET /users/{user_id}` (the member as the ranker sees her).
 
 ## Output Example: Four scenarios
 

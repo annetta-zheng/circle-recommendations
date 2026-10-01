@@ -48,7 +48,7 @@ Out of scope: authentication, write operations (join / request), real-time updat
 #### 0. Infra/Observability endpoints: 
  `GET /health` (status, row counts, `as_of`)
 
- `GET /users/{id}` (the member as the ranker sees her; a profile, so behind auth in production).
+ `GET /users/{user_id}` (the member as the ranker sees her; a profile, so behind auth in production).
 
 
 #### 1. Core Function endpoint: 
@@ -264,9 +264,9 @@ flowchart LR
     subgraph seed["Seed — one command"]
         J[("data/*.json")] --> SEED["seed.py"] --> DB[("SQLite<br/>7 tables + settings + circle_stats view")]
     end
-    subgraph request["GET /users/{id}/recommendations"]
+    subgraph request["GET /users/{user_id}/recommendations"]
         CL["CLI / curl / tests"] --> API["api.py<br/>routes · validation"]
-        API --> SVC["recommender.py<br/>candidates → filters → features → score → diversify → explain"]
+        API --> SVC["recommender.py<br/>candidates → filters → features → score → diversify → backfill → explain"]
         SVC --> API
     end
     SVC --> REPO["db.py<br/>member · circles+stats · co-member overlap · co-membership"]
@@ -292,7 +292,7 @@ sequenceDiagram
     participant A as api.py
     participant D as db.py (SQLite)
     participant R as recommender.py
-    C->>A: GET /users/{id}/recommendations?limit&cursor&location&debug
+    C->>A: GET /users/{user_id}/recommendations?limit&debug&cursor&location&exclude_coworkers
     alt database not seeded
         A-->>C: 503 run `make seed`
     else limit outside 1–20
@@ -313,7 +313,7 @@ sequenceDiagram
     R->>R: hard filters, every reason recorded
     R->>D: co_member_overlap, co_membership
     D-->>R: counts and degrees per Circle, never who
-    R->>R: features → score → diversify → slice page → explain
+    R->>R: features → score → diversify → backfill → slice page → explain
     R-->>A: ranked page, next_offset
     A-->>C: 200 recommendations, hints, next_cursor
 ```

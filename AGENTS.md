@@ -4,7 +4,7 @@ Instructions for coding agents working in this repo. The README is for humans an
 
 ## Project
 
-A FastAPI + SQLite service that ranks Circles (small peer groups) for a member and explains each pick in plain language. Python 3.10+, no external services. Pipeline: candidates → hard filters → features → score → diversify → explain. Full description in `README.md`, design rationale in `DESIGN.md`, requirements and API contract in `docs/system-design.md`, schema rationale in `docs/schema.md`.
+A FastAPI + SQLite service that ranks Circles (small peer groups) for a member and explains each pick in plain language. Python 3.10+, no external services. Pipeline: candidates → hard filters → features → score → diversify → backfill → explain. Full description in `README.md`, design rationale in `DESIGN.md`, requirements and API contract in `docs/system-design.md`, schema rationale in `docs/schema.md`.
 
 ## Setup and commands
 

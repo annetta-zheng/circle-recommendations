@@ -1,4 +1,5 @@
-"""The pipeline: candidates -> hard filters -> features -> score -> diversify -> backfill -> explore -> explain.
+"""The pipeline: candidates -> hard filters -> features -> score -> diversify -> backfill -> explain
+(plus an exploration slot after backfill, built and off by default).
 
 Knows nothing about SQL (db.py) or HTTP (api.py).
 """
