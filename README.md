@@ -185,13 +185,4 @@ data/                the five seed files, unchanged
 
 ## How I work with AI on this repo
 
-Lean In asked to see how I work with AI. This is the record for this submission: the rules I hold the agent to, what it produced, what I reversed, what I kept, and what I checked by hand. The design workbook, the peer review and the grading pass live in a Claude Project (available on request); the code and tests are what shipped.
-
-### Rules I give the agent
-
-- AI drafts, I decide. Every weight, threshold and gate in `app/config.py` needs a reason traceable to the data (the generator's health tiers, the tag noise, the chat-to-post ratio) before it goes in.
-- Never tune toward a named Circle at a named rank. Tests assert the brief's properties — her interests lead, never all three duplicates, #22 first — so the formula cannot be back-solved from the answers.
-- Simulate before coding. The scoring formula ran on the real seed data as a script before any module existed; what broke there was fixed in the design, not patched in the code.
-- Every claim about the dataset is checked against `generate.mjs` or a query. "Early Career Collective is a confidence Circle" was true; "it can be recommended" was not — it is `unlisted`.
-- A member never reads a factor name or a score. Explanations come from templates, and a test lints every sentence.
-- Prose is cut to what a reviewer needs; the agent's first drafts run long.
+I use AI as a fast, fallible collaborator, not an oracle, with a fixed division of labor: I define the problem and the method, the agent collects data and implements, and I revise, verify and decide. I turned the brief into a one-page digest and testable properties, and set the method: simulate before coding, and measure every idea as a `make eval` row (accuracy, exposure, coverage) against shipped with a paired sign test. The rules I set are enforced through `AGENTS.md`: every weight and gate needs a data-traceable reason, nothing is tuned toward a named Circle, and members never see factor names or scores. The agent profiled the data, gathered the research (Wheelan on group size, McPherson on homophily, Abdollahpouri on popularity bias, Liu on event-based social networks) and implemented the ranker, tests and eval. I checked every data claim against `generate.mjs` or a query and decided the tradeoffs: a deterministic, fully explained ranker with exploration built but off until impression and join logs can judge it, where the agent wanted cold-start exploration live; company as a filter the member chooses; popularity held by an exposure bound rather than a hand-set penalty. Before each commit, scenario transcripts come from real CLI runs and the 61 tests and eval table are rerun.
